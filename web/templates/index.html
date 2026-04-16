@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jetson ZED Capture Control</title>
+    <link rel="stylesheet" href="/static/style.css?v=6">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Jetson ZED 2i Capture</h1>
+            <p class="subtitle">Stereo Video Recording System</p>
+        </header>
+
+        <section class="status-panel">
+            <h2>Status</h2>
+            <div id="status-display" class="status-box">
+                <div class="status-indicator {{ 'recording' if status.state == 'recording' else 'idle' }}" id="status-indicator"></div>
+                <div class="status-info">
+                    <span class="status-state" id="status-state">{{ status.state | upper }}</span>
+                    <span class="status-message" id="status-message">{{ status.message }}</span>
+                    <span class="status-time" id="status-time">{{ status.timestamp }}</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="live-panel">
+            <h2>Live Camera View</h2>
+            <div class="live-container">
+                <video id="live-video" autoplay playsinline muted></video>
+                <div class="live-overlay" id="live-overlay">
+                    <p>Click "Start Live View" to see camera feed</p>
+                </div>
+            </div>
+            <div class="live-controls">
+                <button id="btn-live" class="btn btn-live" onclick="toggleLiveView()">Start Live View</button>
+                <span id="live-status" class="live-status"></span>
+            </div>
+        </section>
+
+        <section class="controls-panel">
+            <h2>Controls</h2>
+            <div class="button-group">
+                <button id="btn-start" class="btn btn-start" onclick="startRecording()">
+                    <span class="icon">&#9899;</span> Start Recording
+                </button>
+                <button id="btn-stop" class="btn btn-stop" onclick="stopRecording()">
+                    <span class="icon">&#9632;</span> Stop Recording
+                </button>
+            </div>
+        </section>
+
+        <section class="analysis-panel">
+            <h2>Scene Analysis</h2>
+            <p class="analysis-desc">Grab sample frames to measure brightness and recommend optimal settings before recording.</p>
+            <button id="btn-analyze" class="btn btn-analyze" onclick="analyzeScene()">Analyze Scene</button>
+            <div id="analysis-result" class="analysis-result" style="display:none"></div>
+        </section>
+
+        <section class="settings-panel">
+            <h2>Camera Settings</h2>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <label for="set-resolution">Resolution</label>
+                    <select id="set-resolution">
+                        <option value="HD720">HD720 (1280x720)</option>
+                        <option value="HD1080" selected>HD1080 (1920x1080)</option>
+                        <option value="HD2K">HD2K (2208x1242)</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="set-depth">Depth Mode</label>
+                    <select id="set-depth">
+                        <option value="NEURAL">NEURAL</option>
+                        <option value="ULTRA">ULTRA</option>
+                        <option value="QUALITY">QUALITY</option>
+                        <option value="PERFORMANCE">PERFORMANCE</option>
+                        <option value="NONE">NONE</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="set-compression">Compression</label>
+                    <select id="set-compression">
+                        <option value="H264">H.264</option>
+                        <option value="H265">H.265</option>
+                        <option value="H264_LOSSLESS">H.264 Lossless</option>
+                        <option value="H265_LOSSLESS">H.265 Lossless</option>
+                    </select>
+                </div>
+                <div class="setting-group">
+                    <label for="set-brightness">Brightness <span id="brightness-val" class="range-val">5</span></label>
+                    <input type="range" id="set-brightness" min="0" max="8" value="5">
+                </div>
+                <div class="setting-group setting-full-width">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="set-auto-exposure">
+                        Auto Exposure / Gain
+                    </label>
+                </div>
+                <div id="manual-exposure-group" class="setting-group">
+                    <label for="set-exposure">Shutter Speed <span id="shutter-speed" class="range-val">~1/40s</span></label>
+                    <input type="range" id="set-exposure" min="1" max="100" value="75">
+                    <span class="range-sub">Exposure value: <span id="exposure-val">75</span>/100</span>
+                </div>
+                <div id="manual-gain-group" class="setting-group">
+                    <label for="set-gain">Gain <span id="gain-val" class="range-val">40</span></label>
+                    <input type="range" id="set-gain" min="0" max="100" value="40">
+                </div>
+                <div class="setting-group setting-full-width">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="set-auto-wb">
+                        Auto White Balance
+                    </label>
+                </div>
+                <div id="manual-wb-group" class="setting-group">
+                    <label for="set-wb">White Balance <span id="wb-val" class="range-val">4500K</span></label>
+                    <input type="range" id="set-wb" min="2800" max="6500" step="100" value="4500">
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn btn-apply" onclick="applySettings()">Apply Settings</button>
+                <span id="settings-status" class="settings-status"></span>
+            </div>
+        </section>
+
+        <section class="videos-panel">
+            <h2>Recordings</h2>
+            <button class="btn btn-refresh" onclick="refreshVideos()">Refresh List</button>
+            <div id="videos-list" class="videos-list">
+                {% if videos %}
+                    {% for video in videos %}
+                    <div class="video-item">
+                        <div class="video-info">
+                            <span class="video-name">{{ video.name }}</span>
+                            <span class="video-meta">{{ video.sizeFormatted }} | {{ video.modifiedFormatted }}</span>
+                        </div>
+                        <div class="video-actions">
+                            <button class="btn btn-small btn-preview" onclick="previewVideo('{{ video.name }}')">Preview</button>
+                            <a href="/api/video/{{ video.name }}" class="btn btn-small btn-download" download>Download</a>
+                            <button class="btn btn-small btn-delete" onclick="deleteVideo('{{ video.name }}')">Delete</button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-videos">No recordings yet</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <footer>
+            <p>ZED 2i Stereo Capture System &bull; Jetson Orin NX</p>
+        </footer>
+    </div>
+
+    <!-- Video Preview Modal -->
+    <div id="video-modal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title">Video Preview</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <video id="video-player" controls autoplay>
+                    <source id="video-source" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div class="modal-footer">
+                <a id="modal-download" href="" class="btn btn-download" download>Download</a>
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js?v=6"></script>
+</body>
+</html>
