@@ -1,0 +1,46 @@
+version: '3.8'
+
+# Full containerized setup for Jetson Orin NX with ZED SDK 5.2
+# Both capture service and web UI run in Docker containers.
+# Requires: nvidia-container-runtime (included with JetPack 5.x)
+#
+# Build:  docker-compose -f docker-compose.orin.yml build --no-cache
+# Start:  docker-compose -f docker-compose.orin.yml up -d
+# Logs:   docker-compose -f docker-compose.orin.yml logs -f
+# Stop:   docker-compose -f docker-compose.orin.yml down
+
+services:
+  capture:
+    build:
+      context: ./capture
+      dockerfile: Dockerfile.orin
+    container_name: zed_capture
+    restart: unless-stopped
+    runtime: nvidia
+    privileged: true
+    volumes:
+      - video_data:/mnt/videos
+    environment:
+      - VIDEO_DIR=/mnt/videos
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    devices:
+      - /dev/video0:/dev/video0
+      - /dev/video1:/dev/video1
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.orin
+    container_name: zed_web
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - video_data:/mnt/videos
+    environment:
+      - VIDEO_DIR=/mnt/videos
+    depends_on:
+      - capture
+
+volumes:
+  video_data:

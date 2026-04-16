@@ -1,0 +1,17 @@
+[Unit]
+Description=ZED Capture Docker Compose Service
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/nvidia/jetson-zed
+ExecStart=/home/nvidia/.local/bin/docker-compose up -d
+ExecStop=/home/nvidia/.local/bin/docker-compose down
+User=nvidia
+Group=nvidia
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,39 @@
+# Capture Service Container for Jetson Orin NX
+# ZED SDK 5.2 on L4T R35.4 (JetPack 5.1.x)
+FROM nvcr.io/nvidia/l4t-base:r35.2.1
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV VIDEO_DIR=/mnt/videos
+
+# Install system dependencies + cuDNN for NEURAL depth mode
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-dev \
+    zstd wget curl ffmpeg gnupg2 ca-certificates \
+    libusb-1.0-0 libusb-1.0-0-dev \
+    usbutils \
+    libcudnn8 libcudnn8-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install ZED SDK 5.2 (JetPack 5.1.2 / L4T 35.4 build)
+RUN cd /tmp && \
+    wget -q -O ZED_SDK.run https://download.stereolabs.com/zedsdk/5.2/l4t35.4/jetsons && \
+    chmod +x ZED_SDK.run && \
+    ./ZED_SDK.run -- silent skip_drivers && \
+    rm ZED_SDK.run && \
+    chmod -R a+rX /usr/local/zed/ && \
+    chmod -R a+rX /usr/local/lib/python3.8/dist-packages/pyzed* 2>/dev/null || true
+
+# Ensure numpy compatibility with pyzed
+RUN pip3 install --no-cache-dir 'numpy>=1.24,<2.0' Pillow
+
+# Copy capture application
+COPY camera_settings.py /app/camera_settings.py
+COPY capture_service_host.py /app/capture_service_host.py
+COPY svo_to_mp4.py /app/svo_to_mp4.py
+
+WORKDIR /app
+
+# Create video directory mount point
+RUN mkdir -p /mnt/videos
+
+CMD ["python3", "capture_service_host.py"]

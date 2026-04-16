@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.svo
+*.svo2
+videos/
+.env
+*.log
+.DS_Store
+node_modules/

@@ -1,0 +1,18 @@
+version: '3.8'
+
+# Capture service runs on host (not in Docker) for ZED SDK SVO recording
+# Start with: sudo systemctl start zed-capture-host
+
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: zed_web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - /home/nvidia/jetson-zed/videos:/mnt/videos
+    environment:
+      - VIDEO_DIR=/mnt/videos

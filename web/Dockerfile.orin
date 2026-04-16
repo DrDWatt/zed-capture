@@ -1,0 +1,27 @@
+# Web Server Container for ZED Control UI (Orin NX with WebRTC)
+FROM python:3.10-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install system dependencies for aiortc/av
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libopus0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+COPY requirements.orin.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy application
+COPY app /app
+COPY templates /app/templates
+COPY static /app/static
+
+WORKDIR /app
+
+# Create video directory mount point
+RUN mkdir -p /mnt/videos
+
+EXPOSE 8080
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

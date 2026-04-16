@@ -1,0 +1,19 @@
+[Unit]
+Description=ZED Capture Service (Host)
+After=network.target
+
+[Service]
+Type=simple
+User=nvidia
+Group=nvidia
+WorkingDirectory=/home/nvidia/jetson-zed/capture
+ExecStart=/usr/bin/python3 /home/nvidia/jetson-zed/capture/capture_service_host.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+Environment=OPENBLAS_CORETYPE=ARMV8
+Environment=LD_LIBRARY_PATH=/usr/local/zed/lib:/usr/local/cuda/lib64:/usr/lib/aarch64-linux-gnu/tegra
+Environment=PATH=/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+[Install]
+WantedBy=multi-user.target
